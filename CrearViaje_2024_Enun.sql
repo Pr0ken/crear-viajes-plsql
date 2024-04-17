@@ -79,10 +79,55 @@ commit;
 --exit;
 
 
-create or replace procedure crearViaje( m_idRecorrido int, m_idAutocar int, m_fecha date, m_conductor varchar) is
-
+create or replace procedure crearViaje (
+    m_idRecorrido int, 
+    m_idAutocar int, 
+    m_fecha date, 
+    m_conductor varchar
+) is
+    v_modelo integer;
+    v_plazas_libres integer;
+    v_autocar_ocupado integer;
+    v_viaje_duplicado integer;
+    v_autocar_sin_modelo integer;
 begin
-    null; -- Retira el null y rellena el procedimiento
+    -- Verificar si el recorrido existe
+    select count(*) into v_modelo from recorridos where idRecorrido = m_idRecorrido;
+    if v_modelo = 0 then
+        raise_application_error(-20001, 'RECORRIDO_INEXISTENTE');
+    end if;
+
+    -- Verificar si el autocar existe
+    select count(*) into v_modelo from autocares where idAutocar = m_idAutocar;
+    if v_modelo = 0 then
+        raise_application_error(-20002, 'AUTOCAR_INEXISTENTE');
+    end if;
+
+    -- Verificar si el autocar estÃ¡ ocupado para la fecha especificada
+    select count(*) into v_autocar_ocupado from viajes where idAutocar = m_idAutocar and fecha = m_fecha;
+    if v_autocar_ocupado > 0 then
+        raise_application_error(-20003, 'AUTOCAR_OCUPADO');
+    end if;
+
+    -- Verificar si ya existe un viaje para ese autocar y recorrido en la misma fecha
+    select count(*) into v_viaje_duplicado from viajes where idAutocar = m_idAutocar and idRecorrido = m_idRecorrido and fecha = m_fecha;
+    if v_viaje_duplicado > 0 then
+        raise_application_error(-20004, 'VIAJE_DUPLICADO');
+    end if;
+
+    -- Obtener la cantidad de plazas libres para el autocar
+    select nPlazasLibres into v_plazas_libres from viajes where idAutocar = m_idAutocar and fecha = m_fecha;
+    
+    -- Si el autocar no tiene modelo asociado, se tomarÃ¡n 25 plazas libres por defecto
+    if v_plazas_libres is null then
+        v_plazas_libres := 25;
+    end if;
+
+    -- Insertar el nuevo viaje
+    insert into viajes (idViaje, idAutocar, idRecorrido, fecha, nPlazasLibres, Conductor)
+    values (seq_viajes.nextval, m_idAutocar, m_idRecorrido, m_fecha, v_plazas_libres, m_conductor);
+    
+    commit;
 end;
 /
 
@@ -151,20 +196,20 @@ begin
   --Caso 4: Crea un viaje OK
   begin
     crearViaje(1, 1, trunc(current_date)+3, 'Pedrito');
-    dbms_output.put_line('Parece OK Crea un viaje válido');
+    dbms_output.put_line('Parece OK Crea un viaje vï¿½lido');
   exception
     when others then
-        dbms_output.put_line('MAL Crea un viaje válido: '||sqlerrm);
+        dbms_output.put_line('MAL Crea un viaje vï¿½lido: '||sqlerrm);
   end;
   
   
   --Caso 5: Crea un viaje OK con autcar sin modelo
   begin
     crearViaje(1, 4, trunc(current_date)+4, 'Jorgito');
-    dbms_output.put_line('Parece OK Crea un viaje válido sin modelo');
+    dbms_output.put_line('Parece OK Crea un viaje vï¿½lido sin modelo');
   exception
     when others then
-        dbms_output.put_line('MAL Crea un viaje válido sin modelo: '||sqlerrm);
+        dbms_output.put_line('MAL Crea un viaje vï¿½lido sin modelo: '||sqlerrm);
   end;
   
   
@@ -183,7 +228,7 @@ begin
     FROM viajes;
     
     if varContenidoReal=varContenidoEsperado then
-      dbms_output.put_line('OK: Sí que modifica bien la BD.'); 
+      dbms_output.put_line('OK: Sï¿½ que modifica bien la BD.'); 
     else
       dbms_output.put_line('Mal no modifica bien la BD.'); 
       dbms_output.put_line('Contenido real:     '||varContenidoReal); 
